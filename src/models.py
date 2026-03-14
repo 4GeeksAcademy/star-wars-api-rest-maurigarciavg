@@ -1,24 +1,29 @@
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, jsonify
-from sqlalchemy import String, Boolean, ForeignKey, Integer
+from sqlalchemy import String, Boolean, ForeignKey, Integer, BigInteger
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from typing import List
 
 db = SQLAlchemy()
 
+
 class User(db.Model):
     __tablename__ = "user"
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    user_name: Mapped[str] = mapped_column(
+        String(120), unique=True, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     last_name: Mapped[str] = mapped_column(String(120), nullable=False)
-    email: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(
+        String(120), unique=True, nullable=False)
     suscription_date: Mapped[str] = mapped_column(String(120), nullable=False)
     password: Mapped[str] = mapped_column(String(120), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean(), nullable=False)
-    
-    favorite_characters: Mapped[List["FavoriteCharacter"]] = relationship(back_populates="owner")
-    favorite_planets: Mapped[List["FavoritePlanet"]] = relationship(back_populates="owner")
+
+    favorite_characters: Mapped[List["FavoriteCharacter"]] = relationship(
+        back_populates="owner")
+    favorite_planets: Mapped[List["FavoritePlanet"]
+                             ] = relationship(back_populates="owner")
 
     def serialize(self):
         return {
@@ -29,6 +34,7 @@ class User(db.Model):
             "last_name": self.last_name
         }
 
+
 class Character(db.Model):
     __tablename__ = "character"
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -36,8 +42,9 @@ class Character(db.Model):
     birth_year: Mapped[str] = mapped_column(String, nullable=False)
     gender: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False)
-    
-    fav_chars: Mapped[List["FavoriteCharacter"]] = relationship(back_populates="character")
+
+    fav_chars: Mapped[List["FavoriteCharacter"]
+                      ] = relationship(back_populates="character")
 
     def serialize(self):
         return {
@@ -48,14 +55,16 @@ class Character(db.Model):
             "description": self.description
         }
 
+
 class Planet(db.Model):
     __tablename__ = "planet"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     climate: Mapped[str] = mapped_column(String(120), nullable=False)
-    population: Mapped[int] = mapped_column(Integer, nullable=False)
-    
-    fav_planets: Mapped[List["FavoritePlanet"]] = relationship(back_populates="planet")
+    population: Mapped[int] = mapped_column(BigInteger, nullable=False)
+
+    fav_planets: Mapped[List["FavoritePlanet"]
+                        ] = relationship(back_populates="planet")
 
     def serialize(self):
         return {
@@ -65,12 +74,14 @@ class Planet(db.Model):
             "population": self.population
         }
 
+
 class FavoriteCharacter(db.Model):
     __tablename__ = "favorite_character"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
-    character_id: Mapped[int] = mapped_column(ForeignKey("character.id"), nullable=False)
-    
+    character_id: Mapped[int] = mapped_column(
+        ForeignKey("character.id"), nullable=False)
+
     owner: Mapped["User"] = relationship(back_populates="favorite_characters")
     character: Mapped["Character"] = relationship(back_populates="fav_chars")
 
@@ -81,12 +92,14 @@ class FavoriteCharacter(db.Model):
             "character_id": self.character_id
         }
 
+
 class FavoritePlanet(db.Model):
     __tablename__ = "favorite_planet"
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=False)
-    planet_id: Mapped[int] = mapped_column(ForeignKey("planet.id"), nullable=False)
-    
+    planet_id: Mapped[int] = mapped_column(
+        ForeignKey("planet.id"), nullable=False)
+
     owner: Mapped["User"] = relationship(back_populates="favorite_planets")
     planet: Mapped["Planet"] = relationship(back_populates="fav_planets")
 
@@ -96,7 +109,3 @@ class FavoritePlanet(db.Model):
             "user_id": self.user_id,
             "planet_id": self.planet_id
         }
-
-
-
-
