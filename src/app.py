@@ -24,10 +24,6 @@ db.init_app(app)
 CORS(app)
 setup_admin(app)
 
-if __name__ == '__main__':
-    PORT = int(os.environ.get('PORT', 3000))
-    app.run(host='0.0.0.0', port=PORT, debug=False)
-
 
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
@@ -40,16 +36,16 @@ def sitemap():
 
 
 @app.route('/users', methods=['GET'])
-def get_users():
-    users_query = User.query.all()
-    results = list(map(lambda item: item.serialize(), users_query))
-    return jsonify(results), 200
+def get_all_users():
+    users = User.query.all()
+    output = [user.serialize() for user in users]
+    return jsonify(output), 200
 
 
 @app.route('/people', methods=['GET'])
 def get_character():
     character_query = Character.query.all()
-    results = list(map(lambda item: item.serialize(), character_query))
+    results = [item.serialize() for item in character_query]
     return jsonify(results), 200
 
 
@@ -61,10 +57,24 @@ def get_character_id(people_id):
     return jsonify(character.serialize()), 200
 
 
+@app.route('/people', methods=['POST'])
+def add_new_character():
+    body = request.get_json()
+    new_char = Character(
+        name=body.get("name"),
+        birth_year=body.get("birth_year"),
+        gender=body.get("gender"),
+        description=body.get("description")
+    )
+    db.session.add(new_char)
+    db.session.commit()
+    return jsonify({"msg": f"Personaje {new_char.name} creado con éxito"}), 201
+
+
 @app.route('/planets', methods=['GET'])
 def get_planets():
     planets_query = Planet.query.all()
-    results = list(map(lambda item: item.serialize(), planets_query))
+    results = [item.serialize() for item in planets_query]
     return jsonify(results), 200
 
 
@@ -74,6 +84,19 @@ def get_planet_id(planets_id):
     if planet is None:
         return jsonify({"msg": "Ese planeta no existe en nuestra galaxia"}), 404
     return jsonify(planet.serialize()), 200
+
+
+@app.route('/planets', methods=['POST'])
+def add_new_planet():
+    body = request.get_json()
+    new_planet = Planet(
+        name=body.get("name"),
+        climate=body.get("climate"),
+        population=body.get("population")
+    )
+    db.session.add(new_planet)
+    db.session.commit()
+    return jsonify({"msg": f"Planeta {new_planet.name} creado con éxito"}), 201
 
 
 @app.route('/users/favorites', methods=['GET'])
@@ -97,7 +120,6 @@ def add_favorite_people(people_id):
     new_fav_char = FavoriteCharacter(user_id=1, character_id=people_id)
     db.session.add(new_fav_char)
     db.session.commit()
-
     return jsonify({"msg": f"Personaje {character.name} añadido a favoritos"}), 200
 
 
@@ -116,12 +138,10 @@ def add_favorite_planet(planet_id):
 def delete_favorite_planet(planet_id):
     favorite = FavoritePlanet.query.filter_by(
         user_id=1, planet_id=planet_id).first()
-
     if favorite is None:
         return jsonify({"msg": "Ese planeta no está en tus favoritos"}), 404
     db.session.delete(favorite)
     db.session.commit()
-
     return jsonify({"msg": "Planeta eliminado de favoritos"}), 200
 
 
@@ -129,71 +149,45 @@ def delete_favorite_planet(planet_id):
 def delete_favorite_people(people_id):
     favorite = FavoriteCharacter.query.filter_by(
         user_id=1, character_id=people_id).first()
-
     if favorite is None:
         return jsonify({"msg": "Ese personaje no está en tus favoritos"}), 404
     db.session.delete(favorite)
     db.session.commit()
-
     return jsonify({"msg": "Personaje eliminado de favoritos"}), 200
-
-
-if __name__ == '__main__':
-    PORT = int(os.environ.get('PORT', 3000))
-    app.run(host='0.0.0.0', port=PORT, debug=False)
-
-
-@app.route('/swapi/people', methods=['GET'])
-def get_swapi_people():
-    response = requests.get("https://swapi.tech/api/people")
-
-    if response.status_code == 200:
-        data = response.json()
-        return jsonify(data["results"]), 200
-
-    return jsonify({"msg": "Error al conectar con SWAPI"}), 500
 
 
 @app.route('/swapi/populate/people', methods=['POST'])
 def populate_people():
     response = requests.get("https://swapi.tech/api/people")
     data = response.json()
-    characters_list = data["results"]
-
-    for item in characters_list:
-        detail_response = requests.get(item["url"])
-        detail_data = detail_response.json()
-        props = detail_data["result"]["properties"]
-
+    for item in data["results"]:
+        detail = requests.get(item["url"]).json()["result"]["properties"]
         new_char = Character(
-            name=props["name"],
-            birth_year=props["birth_year"],
-            gender=props["gender"],
-            description=detail_data["result"]["description"]
+            name=detail["name"],
+            birth_year=detail["birth_year"],
+            gender=detail["gender"],
+            description="Personaje de SWAPI"
         )
         db.session.add(new_char)
-    
     db.session.commit()
-    return jsonify({"msg": f"Se han importado {len(characters_list)} personajes con detalles"}), 200
+    return jsonify({"msg": "Personajes importados"}), 200
+
 
 @app.route('/swapi/populate/planets', methods=['POST'])
 def populate_planets():
     response = requests.get("https://swapi.tech/api/planets")
     data = response.json()
-    planets_list = data["results"]
-
-    for item in planets_list:
-        detail_response = requests.get(item["url"])
-        detail_data = detail_response.json()
-        props = detail_data["result"]["properties"]
-        pop = int(props["population"]) if props["population"].isnumeric() else 0
-
+    for item in data["results"]:
+        detail = requests.get(item["url"]).json()["result"]["properties"]
+        pop = int(detail["population"]
+                  ) if detail["population"].isnumeric() else 0
         new_planet = Planet(
-            name=props["name"],
-            climate=props["climate"],
-            population=pop
-        )
+            name=detail["name"], climate=detail["climate"], population=pop)
         db.session.add(new_planet)
-    
     db.session.commit()
-    return jsonify({"msg": f"Se han importado {len(planets_list)} planetas con detalles"}), 200
+    return jsonify({"msg": "Planetas importados"}), 200
+
+
+if __name__ == '__main__':
+    PORT = int(os.environ.get('PORT', 3000))
+    app.run(host='0.0.0.0', port=PORT, debug=True)
